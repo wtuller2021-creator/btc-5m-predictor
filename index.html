@@ -76,15 +76,34 @@ button,.btn{border-radius:14px!important}
 @media(max-width:600px){.btc-v5-hero{margin:8px 0 12px;padding:16px;border-radius:19px}.btc-v5-title{font-size:22px}.btc-v5-clock{padding:18px 8px}.btc-v5-time{font-size:62px}}
 </style>
 
-</head>
+<style id="btc-edge-v6-polish">
+.btc-v5-prediction{margin-top:14px;padding:20px;text-align:center;border-radius:20px;background:linear-gradient(180deg,rgba(10,17,27,.98),rgba(5,8,13,.98));border:1px solid rgba(89,217,255,.13)}
+#btcV5Side{font-size:42px;font-weight:950;letter-spacing:-.05em;margin:5px 0}
+#btcV5Confidence{font-size:12px;color:#8290a3}
+.btc-v5-prediction.up{border-color:rgba(72,226,155,.35);box-shadow:0 0 45px rgba(72,226,155,.08)}
+.btc-v5-prediction.down{border-color:rgba(255,92,112,.35);box-shadow:0 0 45px rgba(255,92,112,.08)}
+</style></head>
 <body>
-
 <div class="btc-v5-hero" id="btcV5Hero">
-  <div class="btc-v5-brand">
-    <div>
-      <h1 class="btc-v5-title">BTC EDGE <span style="color:#59d9ff">AI</span></h1>
-      <div class="btc-v5-sub">Polymarket 5-Minute Intelligence Engine</div>
-    </div>
+  <div class="btc-v5-brand"><div>
+    <h1 class="btc-v5-title">BTC EDGE <span style="color:#59d9ff">AI</span></h1>
+    <div class="btc-v5-sub">POLYMARKET 5-MINUTE PREDICTION ENGINE</div>
+  </div><div class="btc-v5-live"><span class="btc-v5-dot"></span> LIVE</div></div>
+  <div class="btc-v5-clock">
+    <div class="btc-v5-label">ROUND TIME REMAINING</div>
+    <div class="btc-v5-time" id="btcV5Timer">05:00</div>
+    <div class="btc-v5-cycle" id="btcV5Cycle">Connecting to Polymarket cycle…</div>
+    <div class="btc-v5-lock" id="btcV5Status">AI ANALYZING • prediction at exactly +90s</div>
+  </div>
+  <div class="btc-v5-prediction" id="btcV5Prediction">
+    <div class="btc-v5-label">NEXT AI PREDICTION</div>
+    <div id="btcV5Side">—</div>
+    <div id="btcV5Confidence">Waiting for the +90s lock</div>
+  </div>
+</div>
+
+
+</div>
     <div class="btc-v5-live"><span class="btc-v5-dot"></span> LIVE MARKET</div>
   </div>
   <div class="btc-v5-clock">
@@ -167,65 +186,57 @@ The engine combines a transparent quantitative ensemble with an adaptive online 
 </div>
 <script src="app.js"></script>
 
-<script id="btc-edge-v5-clock">
+
+
+<script id="btc-edge-v6-sync">
 (function(){
-  const G='https://gamma-api.polymarket.com/events';
-  const S='btc-up-or-down-5m';
-  const timer=document.getElementById('btcV5Timer');
-  const cycle=document.getElementById('btcV5Cycle');
-  const status=document.getElementById('btcV5Status');
-  let start=0,end=0,lastFetch=0;
+const E='https://gamma-api.polymarket.com/events', S='btc-up-or-down-5m';
+const timer=document.getElementById('btcV5Timer'), cyc=document.getElementById('btcV5Cycle');
+const stat=document.getElementById('btcV5Status'), side=document.getElementById('btcV5Side'), conf=document.getElementById('btcV5Confidence'), card=document.getElementById('btcV5Prediction');
+let st=0,en=0,slug='',fetched=0,lockedCycle=0;
 
-  function setClock(ms){
-    if(!timer)return;
-    ms=Math.max(0,ms);
-    const sec=Math.ceil(ms/1000);
-    const m=Math.floor(sec/60), s=sec%60;
-    timer.textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
-    if(ms<=1000){ timer.textContent='05:00'; }
+function fmt(ms){let s=Math.max(0,Math.ceil(ms/1000));return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}
+function reset(){side.textContent='—';conf.textContent='Waiting for the +90s lock';card.classList.remove('up','down');stat.textContent='AI ANALYZING • prediction at exactly +90s';}
+async function sync(){
+ try{
+  const now=Date.now(), r=await fetch(E+'?series_slug='+encodeURIComponent(S)+'&closed=false&limit=100&order=endDate&ascending=true',{cache:'no-store'}), raw=await r.json();
+  const a=(Array.isArray(raw)?raw:(raw.data||[])).map(x=>({s:Date.parse(x.eventStartTime||x.startDate||''),e:Date.parse(x.endDate||''),g:x.slug}))
+   .filter(x=>Number.isFinite(x.s)&&Number.isFinite(x.e)&&x.s<=now&&now<x.e).sort((a,b)=>a.e-b.e);
+  if(a[0]){
+   const x=a[0];
+   if(x.s!==st||x.e!==en){st=x.s;en=x.e;slug=x.g;lockedCycle=0;reset();}
+   fetched=now; window.__btcEdgePolymarketCycle={start:st,end:en,slug:slug};
+   cyc.textContent='POLYMARKET • '+new Date(st).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})+' → '+new Date(en).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
   }
-
-  async function sync(){
-    try{
-      const now=Date.now();
-      const r=await fetch(G+'?series_slug='+encodeURIComponent(S)+'&closed=false&limit=100&order=endDate&ascending=true',{cache:'no-store'});
-      const data=await r.json();
-      const arr=Array.isArray(data)?data:(data.data||[]);
-      const e=arr.map(x=>({
-        start:Date.parse(x.eventStartTime||x.startDate||''),
-        end:Date.parse(x.endDate||''),
-        slug:x.slug
-      })).filter(x=>Number.isFinite(x.start)&&Number.isFinite(x.end)&&x.start<=now&&now<x.end)
-        .sort((a,b)=>a.end-b.end)[0];
-      if(e){
-        start=e.start; end=e.end; lastFetch=now;
-        cycle.textContent='POLYMARKET CYCLE • '+new Date(start).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})+' → '+new Date(end).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
-        window.__btcEdgePolymarketCycle={start,end,slug:e.slug};
-      }
-    }catch(e){}
-  }
-
-  function tick(){
-    const now=Date.now();
-    if(window.__btcEdgePolymarketCycle){
-      const c=window.__btcEdgePolymarketCycle;
-      if(c.start<=now&&now<c.end){start=c.start;end=c.end;}
-    }
-    if(!start||now>=end||now-lastFetch>15000) sync();
-    if(start&&end&&start<=now&&now<end){
-      setClock(end-now);
-      const elapsed=(now-start)/1000;
-      if(elapsed<90) status.textContent='AI ANALYZING • prediction locks at +90s';
-      else status.textContent='AI PREDICTION LOCKED • waiting for settlement';
-    }else{
-      setClock(0);
-      status.textContent='Synchronizing with Polymarket…';
-    }
-    requestAnimationFrame(tick);
-  }
-  sync(); tick();
+ }catch(e){}
+}
+function mirror(){
+ const els=[document.querySelector('#call'),document.querySelector('.call'),document.querySelector('.prediction'),document.querySelector('.signal')];
+ for(const el of els){if(!el)continue;const v=(el.textContent||'').trim().toUpperCase();if(v==='UP'||v==='DOWN'){side.textContent=v;card.classList.toggle('up',v==='UP');card.classList.toggle('down',v==='DOWN');conf.textContent='LOCKED • prediction cannot change';return}}
+}
+async function loop(){
+ const now=Date.now();
+ if(window.__btcEdgePolymarketCycle?.start&&window.__btcEdgePolymarketCycle?.end){
+  const c=window.__btcEdgePolymarketCycle;
+  if(c.start!==st||c.end!==en){st=c.start;en=c.end;slug=c.slug||'';lockedCycle=0;reset();}
+ }
+ if(!st||now>=en||now-fetched>10000) await sync();
+ if(st&&en&&st<=now&&now<en){
+  const elapsed=(now-st)/1000;
+  timer.textContent=fmt(en-now);
+  if(elapsed<90){
+   stat.textContent='AI ANALYZING • prediction at exactly +90s';
+  } else if(!lockedCycle){
+   // First browser frame at or after 90.000 seconds: invoke engine once.
+   lockedCycle=st;
+   try{ if(typeof window.lockPrediction==='function') window.lockPrediction(); }catch(e){}
+   stat.textContent='AI PREDICTION LOCKED';
+   setTimeout(mirror,50);
+  } else mirror();
+ }
+ requestAnimationFrame(loop);
+}
+sync().then(loop);
 })();
-</script>
-
-</body>
+</script></body>
 </html>
