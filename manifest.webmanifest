@@ -1,9 +1,9 @@
 {
-  "name": "BTC 5M Pro",
-  "short_name": "BTC 5M Pro",
-  "start_url": "./",
-  "display": "standalone",
-  "background_color": "#05090d",
-  "theme_color": "#071018",
-  "description": "Read-only Polymarket BTC 5-minute prediction research terminal."
+  "name":"BTC EDGE — 5M Intelligence Terminal",
+  "short_name":"BTC EDGE",
+  "start_url":"./",
+  "display":"standalone",
+  "background_color":"#04070b",
+  "theme_color":"#05080d",
+  "description":"Read-only research terminal for Polymarket BTC 5-minute Up/Down markets."
 }

@@ -1,120 +1,127 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#071018">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="BTC 5M Pro">
-  <link rel="manifest" href="manifest.webmanifest">
-  <title>BTC 5M Pro — Polymarket Predictor</title>
-  <style>
-    :root{--bg:#05090d;--panel:#0b1219;--panel2:#0f1821;--line:#1c2a36;--text:#edf4f8;--muted:#8293a1;--up:#31d58a;--down:#ff6174;--warn:#ffca58;--blue:#67b7ff;--shadow:0 18px 50px rgba(0,0,0,.28)}
-    *{box-sizing:border-box}html,body{margin:0;background:radial-gradient(circle at 50% -20%,#142433 0,#071018 38%,#05090d 72%);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",Inter,system-ui,sans-serif}
-    body{min-height:100vh}.wrap{width:min(1180px,100%);margin:auto;padding:18px 14px 40px}
-    header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}.brand{display:flex;align-items:center;gap:11px}
-    .logo{width:42px;height:42px;border-radius:13px;background:linear-gradient(145deg,#152533,#071018);border:1px solid #294050;display:grid;place-items:center;box-shadow:var(--shadow);font-weight:900;color:#fff}
-    h1{font-size:20px;margin:0;letter-spacing:-.5px}.sub{font-size:12px;color:var(--muted);margin-top:2px}.status{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:12px}
-    .dot{width:8px;height:8px;border-radius:50%;background:var(--warn);box-shadow:0 0 12px currentColor}.dot.ok{background:var(--up)}.dot.bad{background:var(--down)}
-    button{border:0;color:var(--text);background:#12202b;border:1px solid #263b4a;border-radius:11px;padding:10px 12px;font-weight:700;cursor:pointer}button:active{transform:scale(.98)}
-    .hero{display:grid;grid-template-columns:1.25fr .75fr;gap:14px}.card{background:linear-gradient(180deg,rgba(15,24,33,.97),rgba(9,16,23,.97));border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);overflow:hidden}
-    .heroMain{padding:18px}.eyebrow{color:var(--muted);font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase}.marketRow{display:flex;justify-content:space-between;gap:10px;align-items:end;margin-top:8px}
-    .marketTitle{font-size:23px;font-weight:850;letter-spacing:-.7px}.clock{font-variant-numeric:tabular-nums;font-size:28px;font-weight:850}
-    .bar{height:8px;background:#18232d;border-radius:99px;overflow:hidden;margin:17px 0 12px}.bar>i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--blue),#b3dcff);border-radius:99px;transition:width .4s}
-    .phase{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}.phase strong{color:var(--text)}
-    .prediction{margin-top:17px;padding:16px;border-radius:15px;background:#081119;border:1px solid #20303c;display:flex;align-items:center;justify-content:space-between;gap:14px}
-    .predSide{font-size:40px;line-height:1;font-weight:950;letter-spacing:-1px}.predSide.up{color:var(--up)}.predSide.down{color:var(--down)}.predSide.pending{color:#b6c5cf;font-size:25px}
-    .predMeta{text-align:right}.confidence{font-size:23px;font-weight:850}.small{font-size:11px;color:var(--muted);margin-top:3px}
-    .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}.metric{padding:13px;border-radius:14px;background:rgba(9,16,23,.9);border:1px solid var(--line)}.metric .v{font-size:18px;font-weight:850;margin-top:5px}.metric .k{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
-    .side{padding:18px}.side h2,.sectionHead h2{font-size:15px;margin:0}.sideRow{display:flex;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);font-size:12px}.sideRow:last-child{border-bottom:0}.sideRow span:first-child{color:var(--muted)}
-    .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.actions button{flex:1;min-width:120px}.primary{background:#e9f4fb;color:#071018;border-color:#e9f4fb}.danger{border-color:#4b2630;color:#ff9aaa;background:#180d11}
-    .section{margin-top:14px}.sectionHead{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:15px 16px;border-bottom:1px solid var(--line)}.sectionHead .tools{display:flex;gap:7px;flex-wrap:wrap}
-    .tableWrap{overflow:auto}.history{width:100%;border-collapse:collapse;min-width:780px}.history th,.history td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--line);font-size:12px;white-space:nowrap}.history th{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;background:#091119;position:sticky;top:0}
-    .pill{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-radius:99px;font-weight:800;font-size:10px}.pill.up{color:var(--up);background:rgba(49,213,138,.1)}.pill.down{color:var(--down);background:rgba(255,97,116,.1)}.pill.win{color:var(--up);background:rgba(49,213,138,.1)}.pill.loss{color:var(--down);background:rgba(255,97,116,.1)}.pill.pending{color:var(--warn);background:rgba(255,202,88,.1)}
-    .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;padding:14px}.stat{padding:14px;border-radius:14px;background:#091119;border:1px solid var(--line)}.stat b{display:block;font-size:22px;margin-top:5px}.stat span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px}
-    .note{padding:13px 16px;color:#9fb0bc;font-size:11px;line-height:1.5;border-top:1px solid var(--line)}.note b{color:#d9e6ed}
-    .empty{padding:35px;text-align:center;color:var(--muted);font-size:12px}.footer{text-align:center;color:#5f727f;font-size:10px;margin-top:18px}
-    @media(max-width:800px){.hero{grid-template-columns:1fr}.grid{grid-template-columns:repeat(2,1fr)}.stats{grid-template-columns:repeat(2,1fr)}header{align-items:flex-start}.status{margin-top:4px}}
-    @media(max-width:430px){.wrap{padding:12px 10px 28px}.heroMain,.side{padding:14px}.clock{font-size:24px}.marketTitle{font-size:19px}.prediction{padding:13px}.predSide{font-size:34px}.stats{grid-template-columns:repeat(2,1fr)}button{padding:9px 10px}}
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#05080d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BTC Edge">
+<link rel="manifest" href="manifest.webmanifest">
+<title>BTC EDGE AI — 5M Prediction Intelligence</title>
+<style>
+:root{
+ --bg:#04070b;--panel:#0a1017;--panel2:#0e1720;--line:#1a2935;--text:#f4f8fb;--muted:#788c9a;
+ --cyan:#54c7ff;--green:#35e29a;--red:#ff5f73;--gold:#ffd166;--purple:#a98cff;
+ --shadow:0 20px 60px rgba(0,0,0,.35)
+}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:
+ radial-gradient(900px 500px at 50% -120px,#173047 0%,rgba(10,23,34,.55) 40%,transparent 72%),
+ linear-gradient(180deg,#05090e,#030509 70%);color:var(--text);
+ font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",Inter,system-ui,sans-serif}
+body{overflow-x:hidden}.app{width:min(1220px,100%);margin:auto;padding:14px 12px 42px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.brand{display:flex;align-items:center;gap:10px}.mark{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;
+ background:linear-gradient(145deg,#17364b,#071019);border:1px solid #2b5065;box-shadow:0 0 35px rgba(84,199,255,.12);font-size:23px;font-weight:950}
+.brand h1{font-size:19px;letter-spacing:-.6px;margin:0}.brand p{margin:2px 0 0;color:var(--muted);font-size:10px}
+.live{display:flex;align-items:center;gap:7px;color:#9bb0bd;font-size:11px}.led{width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 13px currentColor}.led.ok{background:var(--green)}.led.bad{background:var(--red)}
+.card{background:linear-gradient(180deg,rgba(13,22,31,.97),rgba(7,12,18,.98));border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow)}
+.hero{display:grid;grid-template-columns:1.35fr .65fr;gap:12px}
+.main{padding:17px}.eyebrow{font-size:9px;text-transform:uppercase;letter-spacing:1.4px;color:#718794;font-weight:900}
+.titleRow{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin-top:7px}.title{font-size:23px;font-weight:950;letter-spacing:-.9px}.timer{font-size:31px;font-weight:950;letter-spacing:-1px;font-variant-numeric:tabular-nums}
+.progress{height:10px;background:#14212a;border-radius:20px;margin:14px 0 8px;overflow:hidden}.progress i{display:block;width:0;height:100%;background:linear-gradient(90deg,var(--cyan),#b6e8ff);border-radius:20px;box-shadow:0 0 18px rgba(84,199,255,.35);transition:width .15s}
+.timeline{display:flex;justify-content:space-between;color:var(--muted);font-size:10px}.timeline b{color:#e7f0f5}
+.signal{margin-top:15px;padding:16px;border-radius:18px;border:1px solid #213441;background:
+ radial-gradient(circle at 80% 20%,rgba(84,199,255,.09),transparent 45%),#071017;
+ display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center}
+.signal.up{border-color:rgba(53,226,154,.38)}.signal.down{border-color:rgba(255,95,115,.38)}
+.call{font-size:43px;font-weight:1000;letter-spacing:-2px;line-height:1}.call.up{color:var(--green)}.call.down{color:var(--red)}.call.wait{color:#9eb0ba;font-size:23px;letter-spacing:-.5px}
+.callHint{font-size:10px;color:var(--muted);margin-top:5px}.confidence{text-align:right}.confidence b{font-size:25px;display:block}.confidence span{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+.miniGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}.mini{background:#081018;border:1px solid #172631;border-radius:14px;padding:11px}.mini span{display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.7px}.mini b{display:block;margin-top:5px;font-size:16px}
+.side{padding:16px}.sideTitle{font-size:14px;font-weight:900;margin-bottom:7px}.row{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:11px}.row:last-of-type{border-bottom:0}.row span{color:var(--muted)}
+.badge{padding:4px 7px;border-radius:99px;background:#13202a;color:#b7c8d2;font-size:9px;font-weight:900}.badge.good{color:var(--green);background:rgba(53,226,154,.09)}.badge.warn{color:var(--gold);background:rgba(255,209,102,.08)}
+.actions{display:flex;gap:7px;margin-top:11px}.btn{flex:1;padding:10px 9px;border-radius:12px;background:#101d27;border:1px solid #243845;color:var(--text);font-weight:800;font-size:11px}.btn.primary{background:#eaf7ff;color:#061017;border-color:#eaf7ff}.btn:active{transform:scale(.98)}
+.section{margin-top:12px}.sectionHead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 15px;border-bottom:1px solid var(--line)}.sectionHead h2{margin:0;font-size:14px}.sectionHead small{color:var(--muted);font-size:9px}
+.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;padding:12px}.stat{background:#080f16;border:1px solid #172631;border-radius:14px;padding:11px}.stat span{color:var(--muted);font-size:8px;text-transform:uppercase;letter-spacing:.8px}.stat b{display:block;font-size:20px;margin-top:5px}
+.chart{padding:13px 14px 5px}.chartBox{height:150px;position:relative;border:1px solid #15242e;border-radius:15px;background:
+ linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);
+ background-size:100% 25%,10% 100%;overflow:hidden}.chart svg{width:100%;height:100%}.chartNote{font-size:9px;color:var(--muted);margin-top:7px}
+.tableWrap{overflow:auto}.history{width:100%;min-width:850px;border-collapse:collapse}.history th,.history td{padding:11px 13px;border-bottom:1px solid var(--line);font-size:10px;text-align:left;white-space:nowrap}.history th{background:#081018;color:var(--muted);font-size:8px;text-transform:uppercase;letter-spacing:.8px;position:sticky;top:0}
+.pill{display:inline-block;border-radius:99px;padding:4px 7px;font-size:8px;font-weight:950}.pill.up{background:rgba(53,226,154,.09);color:var(--green)}.pill.down{background:rgba(255,95,115,.09);color:var(--red)}.pill.win{background:rgba(53,226,154,.09);color:var(--green)}.pill.loss{background:rgba(255,95,115,.09);color:var(--red)}.pill.pending{background:rgba(255,209,102,.08);color:var(--gold)}
+.empty{text-align:center;color:var(--muted);padding:30px!important}.foot{margin-top:15px;text-align:center;color:#526673;font-size:9px;line-height:1.6}
+@media(max-width:850px){.hero{grid-template-columns:1fr}.stats{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:500px){.app{padding:10px 9px 30px}.top{align-items:flex-start}.title{font-size:19px}.timer{font-size:26px}.miniGrid{grid-template-columns:repeat(2,1fr)}.stats{grid-template-columns:repeat(2,1fr)}.signal{padding:14px}.call{font-size:38px}}
+</style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <div class="brand"><div class="logo">₿</div><div><h1>BTC 5M Pro</h1><div class="sub">Polymarket Up / Down research terminal</div></div></div>
-    <div class="status"><i class="dot" id="connDot"></i><span id="connText">Connecting…</span></div>
-  </header>
+<div class="app">
+<header class="top">
+  <div class="brand"><div class="mark">₿</div><div><h1>BTC EDGE AI</h1><p>5-MIN PREDICTION INTELLIGENCE • READ-ONLY</p></div></div>
+  <div class="live"><i class="led" id="led"></i><span id="conn">CONNECTING</span></div>
+</header>
 
-  <section class="hero">
-    <div class="card heroMain">
-      <div class="eyebrow">Live market</div>
-      <div class="marketRow"><div><div class="marketTitle" id="marketName">BTC Up or Down — 5m</div><div class="sub" id="marketSlug">Finding active market…</div></div><div class="clock" id="clock">--:--</div></div>
-      <div class="bar"><i id="progress"></i></div>
-      <div class="phase"><span id="phase">Waiting for cycle</span><strong id="seconds">0 / 300s</strong></div>
+<div class="hero">
+<section class="card main">
+  <div class="eyebrow">Active Polymarket market</div>
+  <div class="titleRow"><div><div class="title">BTC Up / Down</div><div class="sub" id="slug">Locating current market…</div></div><div class="timer" id="timer">00:00</div></div>
+  <div class="progress"><i id="prog"></i></div>
+  <div class="timeline"><span id="phase">Synchronizing market clock</span><b id="elapsed">0 / 300s</b></div>
 
-      <div class="prediction">
-        <div><div class="eyebrow">90-second prediction</div><div class="predSide pending" id="prediction">ANALYZING</div></div>
-        <div class="predMeta"><div class="confidence" id="confidence">—</div><div class="small" id="predTime">No locked prediction</div></div>
-      </div>
+  <div class="signal" id="signal">
+    <div><div class="eyebrow">AI decision • 90-second lock</div><div class="call wait" id="call">ANALYZING</div><div class="callHint" id="callHint">Adaptive ensemble is analyzing live BTC data.</div></div>
+    <div class="confidence"><b id="conf">—</b><span>AI confidence</span></div>
+  </div>
 
-      <div class="grid">
-        <div class="metric"><div class="k">BTC price</div><div class="v" id="btcPrice">—</div></div>
-        <div class="metric"><div class="k">30s move</div><div class="v" id="ret30">—</div></div>
-        <div class="metric"><div class="k">60s move</div><div class="v" id="ret60">—</div></div>
-        <div class="metric"><div class="k">90s move</div><div class="v" id="ret90">—</div></div>
-      </div>
-    </div>
+  <div class="miniGrid">
+    <div class="mini"><span>Chainlink BTC</span><b id="price">—</b></div>
+    <div class="mini"><span>30s return</span><b id="r30">—</b></div>
+    <div class="mini"><span>60s return</span><b id="r60">—</b></div>
+    <div class="mini"><span>90s return</span><b id="r90">—</b></div>
+  </div>
+</section>
 
-    <div class="card side">
-      <h2>Signal diagnostics</h2>
-      <div class="sideRow"><span>Trend slope</span><b id="slope">—</b></div>
-      <div class="sideRow"><span>Volatility</span><b id="vol">—</b></div>
-      <div class="sideRow"><span>Model score</span><b id="score">—</b></div>
-      <div class="sideRow"><span>Data samples</span><b id="samples">0</b></div>
-      <div class="sideRow"><span>Market status</span><b id="mktStatus">Searching</b></div>
-      <div class="actions">
-        <button class="primary" id="notifyBtn">Enable alerts</button>
-        <button id="refreshBtn">Refresh</button>
-      </div>
-      <div class="actions">
-        <button id="exportBtn">Export history</button>
-        <button class="danger" id="clearBtn">Clear history</button>
-      </div>
-    </div>
-  </section>
+<aside class="card side">
+  <div class="sideTitle">AI engine diagnostics</div>
+  <div class="row"><span>Data source</span><b class="badge good">CHAINLINK RTDS</b></div>
+  <div class="row"><span>Market clock</span><b id="clockState" class="badge warn">SYNCING</b></div>
+  <div class="row"><span>Samples</span><b id="samples">0</b></div>
+  <div class="row"><span>Trend</span><b id="trend">—</b></div>
+  <div class="row"><span>Volatility</span><b id="vol">—</b></div>
+  <div class="row"><span>Market consensus</span><b id="consensus">—</b></div>
+  <div class="row"><span>Signal quality</span><b id="quality">—</b></div><div class="row"><span>Adaptive training</span><b id="modelSamples">0 verified</b></div><div class="row"><span>Model agreement</span><b id="agreement">—</b></div>
+  <div class="actions"><button class="btn primary" id="notify">Enable alerts</button><button class="btn" id="sync">Sync</button></div>
+  <div class="actions"><button class="btn" id="export">Export ledger</button><button class="btn" id="clear">Clear</button></div>
+</aside>
+</div>
 
-  <section class="card section">
-    <div class="sectionHead"><h2>Performance ledger</h2><div class="tools"><span class="small" id="ledgerStatus">Every locked prediction is recorded locally.</span></div></div>
-    <div class="stats">
-      <div class="stat"><span>Verified</span><b id="statVerified">0</b></div>
-      <div class="stat"><span>Correct</span><b id="statCorrect">0</b></div>
-      <div class="stat"><span>Accuracy</span><b id="statAccuracy">—</b></div>
-      <div class="stat"><span>Avg confidence</span><b id="statConf">—</b></div>
-      <div class="stat"><span>Current streak</span><b id="statStreak">0</b></div>
-    </div>
-    <div class="tableWrap">
-      <table class="history">
-        <thead><tr><th>Time</th><th>Market</th><th>Prediction</th><th>Confidence</th><th>BTC @ 90s</th><th>Result</th><th>Resolution source</th></tr></thead>
-        <tbody id="historyBody"><tr><td colspan="7" class="empty">No predictions yet. The first locked prediction will appear here.</td></tr></tbody>
-      </table>
-    </div>
-    <div class="note"><b>Accuracy tracking is resolution-based.</b> A prediction is not counted as correct or wrong until Polymarket's resolved market data reports the winning side. If the resolution endpoint is temporarily unavailable, the row stays <b>Pending verification</b> and the app retries automatically. This prevents the ledger from guessing an outcome from a live price.</div>
-  </section>
+<section class="card section">
+<div class="sectionHead"><h2>AI intelligence stream</h2><small id="engineText">Waiting for enough observations…</small></div>
+<div class="chart"><div class="chartBox"><svg id="chartSvg" viewBox="0 0 100 100" preserveAspectRatio="none"><polyline id="line" fill="none" stroke="#54c7ff" stroke-width="1.3" points="0,50 100,50"/></svg></div><div class="chartNote">Cycle-normalized Chainlink price path. The AI sees only pre-lock information, then freezes the decision at +90s.</div></div>
+</section>
 
-  <section class="card section">
-    <div class="sectionHead"><h2>How this version behaves</h2></div>
-    <div class="note">
-      <b>1.</b> Detects the current 5-minute BTC market. &nbsp;
-      <b>2.</b> Collects Polymarket's public Chainlink BTC/USD stream during the cycle. &nbsp;
-      <b>3.</b> At exactly +90 seconds, locks one UP or DOWN decision and never changes it. &nbsp;
-      <b>4.</b> After the market closes, verifies the actual Polymarket result and updates the ledger. &nbsp;
-      <b>5.</b> Stores the full record in your browser so your history survives refreshes.
-      <br><br>
-      This is a transparent research model, not a guarantee of profit. The ledger is designed to help you measure whether the model actually has an edge before risking money.
-    </div>
-  </section>
-  <div class="footer">BTC 5M Pro • Read-only • No private keys • No automatic trading</div>
+<section class="card section">
+<div class="sectionHead"><h2>Verified prediction ledger</h2><small id="ledgerMeta">0 records</small></div>
+<div class="stats">
+ <div class="stat"><span>Verified</span><b id="verified">0</b></div>
+ <div class="stat"><span>Correct</span><b id="correct">0</b></div>
+ <div class="stat"><span>Accuracy</span><b id="accuracy">—</b></div>
+ <div class="stat"><span>Avg confidence</span><b id="avgConf">—</b></div>
+ <div class="stat"><span>Win streak</span><b id="streak">0</b></div>
+ <div class="stat"><span>Pending</span><b id="pending">0</b></div>
+</div>
+<div class="tableWrap">
+<table class="history"><thead><tr><th>Time</th><th>Prediction</th><th>Confidence</th><th>BTC @ +90s</th><th>Quality</th><th>Outcome</th><th>Verification</th></tr></thead>
+<tbody id="rows"><tr><td colspan="7" class="empty">Your verified prediction history will appear here.</td></tr></tbody></table>
+</div>
+<div class="foot" style="padding:10px 14px;border-top:1px solid var(--line)">
+Every result is independently verified against the Polymarket market record after closure. The ledger requires a closed market plus resolved UMA status and a decisive resolved outcome; unresolved markets remain pending.
+</div>
+</section>
+
+<div class="foot">
+<b>BTC EDGE AI</b> is a research/paper-trading terminal. No private keys, wallet access, or automatic orders.<br>
+The engine combines a transparent quantitative ensemble with an adaptive online classifier trained only on verified historical outcomes. Confidence is calibrated model output — never a guarantee of accuracy or profit.
+</div>
 </div>
 <script src="app.js"></script>
 </body>
