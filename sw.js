@@ -1,3 +1,11 @@
+const CACHE="btc5m-pro-v2";
 self.addEventListener("install",e=>self.skipWaiting());
-self.addEventListener("activate",e=>self.clients.claim());
-self.addEventListener("fetch",e=>{ if(e.request.method==="GET") e.respondWith(caches.open("btc5m-v1").then(async c=>{try{const r=await fetch(e.request);c.put(e.request,r.clone());return r}catch(_){return c.match(e.request)}}))});
+self.addEventListener("activate",e=>e.waitUntil(self.clients.claim()));
+self.addEventListener("fetch",e=>{
+  if(e.request.method!=="GET") return;
+  const u=new URL(e.request.url);
+  if(u.origin!==location.origin) return;
+  e.respondWith(fetch(e.request).then(r=>{
+    const copy=r.clone(); caches.open(CACHE).then(c=>c.put(e.request,copy)); return r;
+  }).catch(()=>caches.match(e.request)));
+});

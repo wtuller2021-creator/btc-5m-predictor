@@ -1,9 +1,9 @@
 {
-  "name":"BTC 5M Predictor",
-  "short_name":"BTC5M",
-  "start_url":".",
-  "display":"standalone",
-  "background_color":"#0b0d12",
-  "theme_color":"#0b0d12",
-  "icons":[]
+  "name": "BTC 5M Pro",
+  "short_name": "BTC 5M Pro",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#05090d",
+  "theme_color": "#071018",
+  "description": "Read-only Polymarket BTC 5-minute prediction research terminal."
 }

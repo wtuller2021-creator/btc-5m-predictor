@@ -1,65 +1,121 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0b0d12">
-<link rel="manifest" href="manifest.webmanifest">
-<title>BTC 5M Predictor</title>
-<style>
-:root{color-scheme:dark;--bg:#0b0d12;--card:#141820;--line:#252b36;--text:#f4f6f8;--muted:#98a2b3;--good:#41d17d;--bad:#ff6262;--accent:#78a7ff}
-*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#0b0d12,#10141b);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;color:var(--text)}
-main{max-width:760px;margin:auto;padding:18px 14px 40px}.top{display:flex;justify-content:space-between;gap:12px;align-items:center}.brand{font-size:23px;font-weight:800}.pill{font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;color:var(--muted)}
-.card{background:rgba(20,24,32,.96);border:1px solid var(--line);border-radius:18px;padding:16px;margin-top:14px;box-shadow:0 10px 30px rgba(0,0,0,.18)}
-.label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}.big{font-size:46px;font-weight:900;margin:4px 0}.prediction{font-size:38px;font-weight:900}.up{color:var(--good)}.down{color:var(--bad)}.neutral{color:#ffd166}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metric{padding:12px;border:1px solid var(--line);border-radius:14px}.v{font-size:20px;font-weight:750;margin-top:4px}.small{font-size:12px;color:var(--muted);line-height:1.45}
-button{width:100%;padding:13px;border:0;border-radius:12px;background:#f4f6f8;color:#0b0d12;font-weight:800;font-size:15px;margin-top:10px}button.secondary{background:#242a34;color:#fff}
-.bar{height:10px;background:#242a34;border-radius:99px;overflow:hidden;margin-top:8px}.fill{height:100%;width:50%;background:var(--accent);transition:.3s}
-pre{white-space:pre-wrap;font-size:11px;color:#aab3c2}.row{display:flex;justify-content:space-between;gap:10px}.ok{color:var(--good)}.warn{color:#ffd166}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#071018">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="BTC 5M Pro">
+  <link rel="manifest" href="manifest.webmanifest">
+  <title>BTC 5M Pro — Polymarket Predictor</title>
+  <style>
+    :root{--bg:#05090d;--panel:#0b1219;--panel2:#0f1821;--line:#1c2a36;--text:#edf4f8;--muted:#8293a1;--up:#31d58a;--down:#ff6174;--warn:#ffca58;--blue:#67b7ff;--shadow:0 18px 50px rgba(0,0,0,.28)}
+    *{box-sizing:border-box}html,body{margin:0;background:radial-gradient(circle at 50% -20%,#142433 0,#071018 38%,#05090d 72%);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",Inter,system-ui,sans-serif}
+    body{min-height:100vh}.wrap{width:min(1180px,100%);margin:auto;padding:18px 14px 40px}
+    header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}.brand{display:flex;align-items:center;gap:11px}
+    .logo{width:42px;height:42px;border-radius:13px;background:linear-gradient(145deg,#152533,#071018);border:1px solid #294050;display:grid;place-items:center;box-shadow:var(--shadow);font-weight:900;color:#fff}
+    h1{font-size:20px;margin:0;letter-spacing:-.5px}.sub{font-size:12px;color:var(--muted);margin-top:2px}.status{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:12px}
+    .dot{width:8px;height:8px;border-radius:50%;background:var(--warn);box-shadow:0 0 12px currentColor}.dot.ok{background:var(--up)}.dot.bad{background:var(--down)}
+    button{border:0;color:var(--text);background:#12202b;border:1px solid #263b4a;border-radius:11px;padding:10px 12px;font-weight:700;cursor:pointer}button:active{transform:scale(.98)}
+    .hero{display:grid;grid-template-columns:1.25fr .75fr;gap:14px}.card{background:linear-gradient(180deg,rgba(15,24,33,.97),rgba(9,16,23,.97));border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);overflow:hidden}
+    .heroMain{padding:18px}.eyebrow{color:var(--muted);font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase}.marketRow{display:flex;justify-content:space-between;gap:10px;align-items:end;margin-top:8px}
+    .marketTitle{font-size:23px;font-weight:850;letter-spacing:-.7px}.clock{font-variant-numeric:tabular-nums;font-size:28px;font-weight:850}
+    .bar{height:8px;background:#18232d;border-radius:99px;overflow:hidden;margin:17px 0 12px}.bar>i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--blue),#b3dcff);border-radius:99px;transition:width .4s}
+    .phase{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}.phase strong{color:var(--text)}
+    .prediction{margin-top:17px;padding:16px;border-radius:15px;background:#081119;border:1px solid #20303c;display:flex;align-items:center;justify-content:space-between;gap:14px}
+    .predSide{font-size:40px;line-height:1;font-weight:950;letter-spacing:-1px}.predSide.up{color:var(--up)}.predSide.down{color:var(--down)}.predSide.pending{color:#b6c5cf;font-size:25px}
+    .predMeta{text-align:right}.confidence{font-size:23px;font-weight:850}.small{font-size:11px;color:var(--muted);margin-top:3px}
+    .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}.metric{padding:13px;border-radius:14px;background:rgba(9,16,23,.9);border:1px solid var(--line)}.metric .v{font-size:18px;font-weight:850;margin-top:5px}.metric .k{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
+    .side{padding:18px}.side h2,.sectionHead h2{font-size:15px;margin:0}.sideRow{display:flex;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);font-size:12px}.sideRow:last-child{border-bottom:0}.sideRow span:first-child{color:var(--muted)}
+    .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.actions button{flex:1;min-width:120px}.primary{background:#e9f4fb;color:#071018;border-color:#e9f4fb}.danger{border-color:#4b2630;color:#ff9aaa;background:#180d11}
+    .section{margin-top:14px}.sectionHead{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:15px 16px;border-bottom:1px solid var(--line)}.sectionHead .tools{display:flex;gap:7px;flex-wrap:wrap}
+    .tableWrap{overflow:auto}.history{width:100%;border-collapse:collapse;min-width:780px}.history th,.history td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--line);font-size:12px;white-space:nowrap}.history th{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;background:#091119;position:sticky;top:0}
+    .pill{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-radius:99px;font-weight:800;font-size:10px}.pill.up{color:var(--up);background:rgba(49,213,138,.1)}.pill.down{color:var(--down);background:rgba(255,97,116,.1)}.pill.win{color:var(--up);background:rgba(49,213,138,.1)}.pill.loss{color:var(--down);background:rgba(255,97,116,.1)}.pill.pending{color:var(--warn);background:rgba(255,202,88,.1)}
+    .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;padding:14px}.stat{padding:14px;border-radius:14px;background:#091119;border:1px solid var(--line)}.stat b{display:block;font-size:22px;margin-top:5px}.stat span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px}
+    .note{padding:13px 16px;color:#9fb0bc;font-size:11px;line-height:1.5;border-top:1px solid var(--line)}.note b{color:#d9e6ed}
+    .empty{padding:35px;text-align:center;color:var(--muted);font-size:12px}.footer{text-align:center;color:#5f727f;font-size:10px;margin-top:18px}
+    @media(max-width:800px){.hero{grid-template-columns:1fr}.grid{grid-template-columns:repeat(2,1fr)}.stats{grid-template-columns:repeat(2,1fr)}header{align-items:flex-start}.status{margin-top:4px}}
+    @media(max-width:430px){.wrap{padding:12px 10px 28px}.heroMain,.side{padding:14px}.clock{font-size:24px}.marketTitle{font-size:19px}.prediction{padding:13px}.predSide{font-size:34px}.stats{grid-template-columns:repeat(2,1fr)}button{padding:9px 10px}}
+  </style>
 </head>
 <body>
-<main>
-  <div class="top"><div class="brand">₿ BTC 5M Predictor</div><div id="conn" class="pill">Connecting…</div></div>
+<div class="wrap">
+  <header>
+    <div class="brand"><div class="logo">₿</div><div><h1>BTC 5M Pro</h1><div class="sub">Polymarket Up / Down research terminal</div></div></div>
+    <div class="status"><i class="dot" id="connDot"></i><span id="connText">Connecting…</span></div>
+  </header>
 
-  <section class="card">
-    <div class="label">Current cycle</div>
-    <div id="cycle" class="big">—</div>
-    <div class="row"><span id="timer" class="small">Waiting for Chainlink…</span><span id="source" class="small">Polymarket RTDS</span></div>
+  <section class="hero">
+    <div class="card heroMain">
+      <div class="eyebrow">Live market</div>
+      <div class="marketRow"><div><div class="marketTitle" id="marketName">BTC Up or Down — 5m</div><div class="sub" id="marketSlug">Finding active market…</div></div><div class="clock" id="clock">--:--</div></div>
+      <div class="bar"><i id="progress"></i></div>
+      <div class="phase"><span id="phase">Waiting for cycle</span><strong id="seconds">0 / 300s</strong></div>
+
+      <div class="prediction">
+        <div><div class="eyebrow">90-second prediction</div><div class="predSide pending" id="prediction">ANALYZING</div></div>
+        <div class="predMeta"><div class="confidence" id="confidence">—</div><div class="small" id="predTime">No locked prediction</div></div>
+      </div>
+
+      <div class="grid">
+        <div class="metric"><div class="k">BTC price</div><div class="v" id="btcPrice">—</div></div>
+        <div class="metric"><div class="k">30s move</div><div class="v" id="ret30">—</div></div>
+        <div class="metric"><div class="k">60s move</div><div class="v" id="ret60">—</div></div>
+        <div class="metric"><div class="k">90s move</div><div class="v" id="ret90">—</div></div>
+      </div>
+    </div>
+
+    <div class="card side">
+      <h2>Signal diagnostics</h2>
+      <div class="sideRow"><span>Trend slope</span><b id="slope">—</b></div>
+      <div class="sideRow"><span>Volatility</span><b id="vol">—</b></div>
+      <div class="sideRow"><span>Model score</span><b id="score">—</b></div>
+      <div class="sideRow"><span>Data samples</span><b id="samples">0</b></div>
+      <div class="sideRow"><span>Market status</span><b id="mktStatus">Searching</b></div>
+      <div class="actions">
+        <button class="primary" id="notifyBtn">Enable alerts</button>
+        <button id="refreshBtn">Refresh</button>
+      </div>
+      <div class="actions">
+        <button id="exportBtn">Export history</button>
+        <button class="danger" id="clearBtn">Clear history</button>
+      </div>
+    </div>
   </section>
 
-  <section class="card">
-    <div class="label">90-second decision</div>
-    <div id="pred" class="prediction neutral">WAITING</div>
-    <div id="conf" class="small">The model locks once the cycle reaches 90 seconds.</div>
-    <div class="bar"><div id="fill" class="fill"></div></div>
+  <section class="card section">
+    <div class="sectionHead"><h2>Performance ledger</h2><div class="tools"><span class="small" id="ledgerStatus">Every locked prediction is recorded locally.</span></div></div>
+    <div class="stats">
+      <div class="stat"><span>Verified</span><b id="statVerified">0</b></div>
+      <div class="stat"><span>Correct</span><b id="statCorrect">0</b></div>
+      <div class="stat"><span>Accuracy</span><b id="statAccuracy">—</b></div>
+      <div class="stat"><span>Avg confidence</span><b id="statConf">—</b></div>
+      <div class="stat"><span>Current streak</span><b id="statStreak">0</b></div>
+    </div>
+    <div class="tableWrap">
+      <table class="history">
+        <thead><tr><th>Time</th><th>Market</th><th>Prediction</th><th>Confidence</th><th>BTC @ 90s</th><th>Result</th><th>Resolution source</th></tr></thead>
+        <tbody id="historyBody"><tr><td colspan="7" class="empty">No predictions yet. The first locked prediction will appear here.</td></tr></tbody>
+      </table>
+    </div>
+    <div class="note"><b>Accuracy tracking is resolution-based.</b> A prediction is not counted as correct or wrong until Polymarket's resolved market data reports the winning side. If the resolution endpoint is temporarily unavailable, the row stays <b>Pending verification</b> and the app retries automatically. This prevents the ledger from guessing an outcome from a live price.</div>
   </section>
 
-  <section class="card grid">
-    <div class="metric"><div class="label">Oracle BTC</div><div id="price" class="v">—</div></div>
-    <div class="metric"><div class="label">Move vs open</div><div id="move" class="v">—</div></div>
-    <div class="metric"><div class="label">Trend</div><div id="trend" class="v">—</div></div>
-    <div class="metric"><div class="label">Volatility</div><div id="vol" class="v">—</div></div>
+  <section class="card section">
+    <div class="sectionHead"><h2>How this version behaves</h2></div>
+    <div class="note">
+      <b>1.</b> Detects the current 5-minute BTC market. &nbsp;
+      <b>2.</b> Collects Polymarket's public Chainlink BTC/USD stream during the cycle. &nbsp;
+      <b>3.</b> At exactly +90 seconds, locks one UP or DOWN decision and never changes it. &nbsp;
+      <b>4.</b> After the market closes, verifies the actual Polymarket result and updates the ledger. &nbsp;
+      <b>5.</b> Stores the full record in your browser so your history survives refreshes.
+      <br><br>
+      This is a transparent research model, not a guarantee of profit. The ledger is designed to help you measure whether the model actually has an edge before risking money.
+    </div>
   </section>
-
-  <section class="card">
-    <div class="label">Polymarket</div>
-    <div id="market" class="small">Finding the live BTC Up/Down market…</div>
-    <div id="odds" class="small" style="margin-top:8px">—</div>
-  </section>
-
-  <section class="card">
-    <div class="label">Safety</div>
-    <div class="small">This is a signal/paper-trading tool. It does not place orders. No private key is required. Do not treat confidence as a guarantee.</div>
-    <button id="notify">Enable 90s alerts</button>
-    <button id="reset" class="secondary">Reset current cycle</button>
-  </section>
-
-  <section class="card">
-    <div class="label">Model diagnostics</div>
-    <pre id="diag">Initializing…</pre>
-  </section>
-</main>
+  <div class="footer">BTC 5M Pro • Read-only • No private keys • No automatic trading</div>
+</div>
 <script src="app.js"></script>
 </body>
 </html>

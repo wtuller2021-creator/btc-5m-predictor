@@ -1,158 +1,380 @@
-const $=id=>document.getElementById(id);
-const RTDS="wss://ws-live-data.polymarket.com";
-const GAMMA="https://gamma-api.polymarket.com/events";
-const CLOB="https://clob.polymarket.com";
-let ws=null, ticks=[], market=null, cycleStart=0, decidedFor=0, timer=null, lastMarketFetch=0;
+(() => {
+  "use strict";
 
-function cycleFor(ts){ return Math.floor(ts/300000)*300000; }
-function fmtTime(ms){return new Date(ms).toLocaleTimeString([], {hour:"numeric",minute:"2-digit",second:"2-digit"});}
-function pct(x){return (x*100).toFixed(3)+"%";}
-function clamp(x,a,b){return Math.max(a,Math.min(b,x));}
+  const RTDS = "wss://ws-live-data.polymarket.com";
+  const GAMMA_EVENTS = "https://gamma-api.polymarket.com/events";
+  const SERIES = "btc-up-or-down-5m";
+  const STORAGE = "btc5m_pro_ledger_v2";
+  const SETTINGS = "btc5m_pro_settings_v2";
 
-function connect(){
-  if(ws) try{ws.close()}catch(_){}
-  ws=new WebSocket(RTDS);
-  ws.onopen=()=>{
-    $("conn").textContent="Chainlink live";
-    $("conn").className="pill ok";
-    ws.send(JSON.stringify({action:"subscribe",subscriptions:[
-      {topic:"crypto_prices_chainlink",type:"*",filters:'{"symbol":"btc/usd"}'}
-    ]}));
-  };
-  ws.onmessage=e=>{
-    try{
-      const m=JSON.parse(e.data);
-      const p=m?.payload;
-      let arr=p?.data;
-      if(!Array.isArray(arr)) arr=p?.data?.data;
-      if(!Array.isArray(arr)) arr=(p?.symbol==="btc/usd"&&p?.value!=null)?[p]:null;
-      if(!arr) return;
-      for(const q of arr){
-        const value=Number(q.value);
-        const ts=Number(q.timestamp ?? q.timestamp_ms ?? Date.now());
-        if(value>1000 && Number.isFinite(value)){
-          ticks.push({t:ts,v:value});
-          ticks=ticks.filter(x=>x.t>=Date.now()-12*60*1000);
-          onTick(ts,value);
-        }
-      }
-    }catch(err){ $("diag").textContent="RTDS parse error: "+err.message; }
-  };
-  ws.onclose=()=>{ $("conn").textContent="Reconnecting…"; $("conn").className="pill"; setTimeout(connect,1500); };
-  ws.onerror=()=>{};
-}
-function onTick(ts,v){
-  const cs=cycleFor(ts);
-  if(cs!==cycleStart){cycleStart=cs; decidedFor=0; ticks=ticks.filter(x=>x.t>=cs-60000); $("pred").textContent="ANALYZING"; $("pred").className="prediction neutral";}
-  const sec=(ts-cs)/1000;
-  $("cycle").textContent=fmtTime(cs)+" → "+fmtTime(cs+300000);
-  $("timer").textContent=sec<90?`${Math.max(0,90-sec).toFixed(0)}s until decision`:`Decision made ${Math.max(0,sec-90).toFixed(0)}s ago`;
-  $("price").textContent="$"+v.toLocaleString(undefined,{maximumFractionDigits:2});
-  const windowTicks=ticks.filter(x=>x.t>=cs && x.t<=ts);
-  if(windowTicks.length<3) return;
-  const open=windowTicks[0].v;
-  const move=(v-open)/open;
-  $("move").textContent=pct(move);
-  const ret30=retAt(ts,30), ret60=retAt(ts,60), ret90=retAt(ts,90);
-  const slope=linearSlope(windowTicks.slice(-60));
-  const vol=stdevReturns(windowTicks.slice(-90));
-  $("trend").textContent=pct(slope);
-  $("vol").textContent=(vol*100).toFixed(3)+"%";
-  if(sec>=90 && decidedFor!==cs){
-    const result=predict({move,ret30,ret60,ret90,slope,vol,windowTicks});
-    decidedFor=cs; renderPrediction(result);
-    notifyUser(result, cs);
-    saveDecision({cs,result,open,price:v});
+  const $ = id => document.getElementById(id);
+  const clamp = (x,a,b) => Math.max(a,Math.min(b,x));
+  const pct = x => Number.isFinite(x) ? (x*100).toFixed(3)+"%" : "—";
+  const usd = x => Number.isFinite(x) ? "$"+x.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) : "—";
+  const fmtTime = ts => new Date(ts).toLocaleTimeString([], {hour:"numeric",minute:"2-digit",second:"2-digit"});
+  const fmtDate = ts => new Date(ts).toLocaleDateString([], {month:"short",day:"numeric"});
+  const sleep = ms => new Promise(r=>setTimeout(r,ms));
+
+  let ws = null, reconnectTimer = null, lastTick = 0;
+  let cycleStart = null, currentSlug = null, currentEvent = null, decidedFor = null;
+  let samples = [];
+  let ledger = loadLedger();
+  let notificationEnabled = false;
+  let marketPollTimer = null;
+  let verifyTimer = null;
+
+  function loadLedger() {
+    try { const x = JSON.parse(localStorage.getItem(STORAGE) || "[]"); return Array.isArray(x) ? x : []; }
+    catch { return []; }
   }
-  $("diag").textContent=
-`Samples: ${windowTicks.length}
-30s return: ${pct(ret30)}
-60s return: ${pct(ret60)}
-90s return: ${pct(ret90)}
-Slope score: ${pct(slope)}
-1s-return volatility: ${(vol*100).toFixed(3)}%
-Decision gate: ${sec>=90?"OPEN":"LOCKED"}
-Note: the settlement rule is Chainlink-based; this model uses the same Polymarket RTDS Chainlink feed.`;
-}
-function retAt(ts,s){
-  const a=ticks.find(x=>x.t>=ts-s*1000);
-  const b=ticks.filter(x=>x.t<=ts).at(-1);
-  return a&&b?(b.v/a.v-1):0;
-}
-function linearSlope(a){
-  if(a.length<5)return 0;
-  const x=a.map((_,i)=>i), y=a.map(z=>z.v);
-  const mx=(x.length-1)/2, my=y.reduce((s,z)=>s+z,0)/y.length;
-  let num=0,den=0; for(let i=0;i<x.length;i++){num+=(x[i]-mx)*(y[i]-my);den+=(x[i]-mx)**2}
-  const raw=num/den;
-  return raw/(my||1);
-}
-function stdevReturns(a){
-  const r=[]; for(let i=1;i<a.length;i++) r.push(a[i].v/a[i-1].v-1);
-  if(r.length<3)return 0;
-  const m=r.reduce((s,z)=>s+z,0)/r.length;
-  return Math.sqrt(r.reduce((s,z)=>s+(z-m)**2,0)/(r.length-1));
-}
-/* Transparent heuristic ensemble:
-   - momentum at 30/60/90s
-   - position vs open
-   - short trend slope
-   - volatility penalty
-   The weights are intentionally conservative. The app records outcomes locally so
-   you can replace these weights with a backtested/calibrated model later. */
-function predict(f){
-  const momentum=0.30*clamp(f.ret30/0.0015,-1,1)+0.25*clamp(f.ret60/0.0025,-1,1)+0.20*clamp(f.ret90/0.0035,-1,1);
-  const position=0.15*clamp(f.move/0.0025,-1,1);
-  const trend=0.20*clamp(f.slope/0.00003,-1,1);
-  const volPenalty=clamp(f.vol/0.00035,0,1);
-  let score=momentum+position+trend;
-  score*=1-0.22*volPenalty;
-  // Map score to a probability-like confidence, then keep it modest.
-  let p=0.5+0.5*Math.tanh(score*1.6);
-  p=clamp(p,0.51,0.89);
-  const side=p>=0.5?"UP":"DOWN";
-  const confidence=side==="UP"?p:1-p;
-  return {side,confidence,score,features:f};
-}
-function renderPrediction(r){
-  $("pred").textContent=r.side;
-  $("pred").className="prediction "+(r.side==="UP"?"up":"down");
-  $("conf").textContent=`Model confidence: ${(r.confidence*100).toFixed(1)}% • score ${r.score.toFixed(3)} • paper-trade only`;
-  $("fill").style.width=(r.confidence*100)+"%";
-}
-async function findMarket(){
-  try{
-    const now=Date.now();
-    if(now-lastMarketFetch<15000)return;
-    lastMarketFetch=now;
-    const u=GAMMA+"?series_slug=btc-up-or-down-5m&closed=false&limit=500&order=endDate&ascending=true";
-    const data=await fetch(u).then(r=>r.json());
-    const ev=(data||[]).find(x=>{
-      const s=Date.parse(x.eventStartTime||x.startDate);
-      const e=Date.parse(x.endDate);
-      return Number.isFinite(s)&&Number.isFinite(e)&&s<=now&&now<e;
-    });
-    if(!ev){$("market").textContent="No active market found; retrying…";return}
-    market=ev;
-    const m=ev.markets?.[0]||ev;
-    $("market").textContent=ev.title||ev.slug||"BTC Up or Down 5m";
-    let prices=m.outcomePrices;
-    if(typeof prices==="string")try{prices=JSON.parse(prices)}catch(_){}
-    if(Array.isArray(prices)) $("odds").textContent=`Displayed market prices: Up ${prices[0]??"—"} • Down ${prices[1]??"—"}`;
-  }catch(e){$("market").textContent="Market discovery error: "+e.message}
-}
-function notifyUser(r,cs){
-  const text=`BTC 5M decision @ +90s: ${r.side} (${(r.confidence*100).toFixed(1)}% model confidence).`;
-  if("Notification" in window && Notification.permission==="granted") new Notification("BTC 5M Predictor",{body:text});
-  if(navigator.vibrate) navigator.vibrate([150,80,150]);
-}
-$("notify").onclick=async()=>{
-  if(!("Notification" in window)){alert("Notifications are not supported in this browser.");return}
-  const p=await Notification.requestPermission();
-  $("notify").textContent=p==="granted"?"90s alerts enabled":"Notifications blocked";
-};
-$("reset").onclick=()=>{decidedFor=0;$("pred").textContent="ANALYZING";$("pred").className="prediction neutral"};
-function saveDecision(d){const a=JSON.parse(localStorage.getItem("btc5m_decisions")||"[]");a.push(d);localStorage.setItem("btc5m_decisions",JSON.stringify(a.slice(-500)));}
-if("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(()=>{});
-connect(); findMarket(); setInterval(findMarket,15000);
-setInterval(()=>{const t=Date.now();$("timer").textContent=`Local clock: ${new Date(t).toLocaleTimeString()}`},1000);
+  function saveLedger() {
+    localStorage.setItem(STORAGE, JSON.stringify(ledger));
+    renderLedger();
+  }
+  function setConn(ok, text) {
+    $("connDot").className = "dot " + (ok ? "ok" : "bad");
+    $("connText").textContent = text;
+  }
+
+  // --- Polymarket active market discovery ---
+  async function findActiveMarket() {
+    try {
+      const u = GAMMA_EVENTS + "?series_slug=" + encodeURIComponent(SERIES) + "&closed=false&limit=500&order=endDate&ascending=true";
+      const r = await fetch(u, {cache:"no-store"});
+      if (!r.ok) throw new Error("Gamma HTTP "+r.status);
+      const events = await r.json();
+      const now = Date.now();
+      const ev = events.find(e => {
+        const s = Date.parse(e.eventStartTime || e.startDate || "");
+        const end = Date.parse(e.endDate || e.endDateIso || "");
+        return Number.isFinite(s) && Number.isFinite(end) && s <= now && now < end;
+      }) || events.find(e => {
+        const end = Date.parse(e.endDate || e.endDateIso || "");
+        return Number.isFinite(end) && end > now;
+      });
+      if (ev) {
+        currentEvent = ev;
+        currentSlug = ev.slug || (ev.markets && ev.markets[0] && ev.markets[0].slug) || null;
+        $("marketSlug").textContent = currentSlug ? currentSlug : "Active event found";
+        $("mktStatus").textContent = "Live";
+      }
+    } catch (e) {
+      $("mktStatus").textContent = "API retrying";
+    }
+  }
+
+  // --- Resolution verification ---
+  // We intentionally verify with Polymarket's resolved market state instead of
+  // deciding the result ourselves from a live BTC quote.
+  async function fetchResolution(slug) {
+    if (!slug) return null;
+    try {
+      const r = await fetch(GAMMA_EVENTS + "?slug=" + encodeURIComponent(slug), {cache:"no-store"});
+      if (!r.ok) return null;
+      const data = await r.json();
+      const ev = Array.isArray(data) ? data[0] : data;
+      const markets = ev?.markets || [];
+      const m = markets[0] || ev;
+      if (!m) return null;
+
+      let outcomes = m.outcomes, prices = m.outcomePrices;
+      if (typeof outcomes === "string") { try { outcomes = JSON.parse(outcomes); } catch {} }
+      if (typeof prices === "string") { try { prices = JSON.parse(prices); } catch {} }
+      if (!Array.isArray(outcomes) || !Array.isArray(prices)) return null;
+
+      let best = -1, winner = null;
+      outcomes.forEach((o,i) => {
+        const p = Number(prices[i]);
+        if (Number.isFinite(p) && p > best) { best=p; winner=String(o).toUpperCase(); }
+      });
+
+      const closed = Boolean(m.closed || ev?.closed);
+      if (!closed || !winner || best < 0.98) return null;
+
+      const normalized = winner.includes("UP") ? "UP" : winner.includes("DOWN") ? "DOWN" : null;
+      return normalized ? {winner: normalized, raw: winner, source:"Polymarket resolved market", resolvedAt: Date.now()} : null;
+    } catch { return null; }
+  }
+
+  async function verifyRecord(id) {
+    const idx = ledger.findIndex(x => x.id === id);
+    if (idx < 0 || ledger[idx].result !== "PENDING") return;
+    const rec = ledger[idx];
+    const result = await fetchResolution(rec.marketSlug);
+    if (result) {
+      ledger[idx] = {...rec, result: rec.prediction === result.winner ? "WIN" : "LOSS", actual: result.winner, resolutionSource: result.source, resolvedAt: result.resolvedAt};
+      saveLedger();
+      return true;
+    }
+    return false;
+  }
+
+  function queueVerification(rec) {
+    const maxAttempts = 30;
+    let attempts = 0;
+    const run = async () => {
+      if (await verifyRecord(rec.id)) return;
+      attempts++;
+      if (attempts < maxAttempts) verifyTimer = setTimeout(run, 5000);
+    };
+    setTimeout(run, 3000);
+  }
+
+  // --- Live Chainlink feed ---
+  function connectFeed() {
+    try { if (ws) ws.close(); } catch {}
+    ws = new WebSocket(RTDS);
+    ws.onopen = () => {
+      setConn(true,"Live Chainlink feed");
+      ws.send(JSON.stringify({
+        action:"subscribe",
+        subscriptions:[{
+          topic:"crypto_prices_chainlink",
+          type:"*",
+          filters:'{"symbol":"btc/usd"}'
+        }]
+      }));
+    };
+    ws.onmessage = e => {
+      try {
+        const d = JSON.parse(e.data);
+        const p = extractPrice(d);
+        if (!Number.isFinite(p) || p <= 0) return;
+        lastTick = Date.now();
+        handlePrice(p, lastTick);
+      } catch {}
+    };
+    ws.onerror = () => setConn(false,"Feed error — reconnecting");
+    ws.onclose = () => {
+      setConn(false,"Feed disconnected — reconnecting");
+      clearTimeout(reconnectTimer);
+      reconnectTimer = setTimeout(connectFeed,3000);
+    };
+  }
+
+  function extractPrice(d) {
+    const candidates = [
+      d?.payload?.data?.price, d?.payload?.price, d?.data?.price, d?.price,
+      d?.payload?.data?.value, d?.payload?.value
+    ];
+    for (const x of candidates) {
+      const n = Number(x);
+      if (Number.isFinite(n) && n > 1000) return n;
+    }
+    return NaN;
+  }
+
+  function resetCycle(startMs) {
+    cycleStart = startMs;
+    samples = [];
+    decidedFor = null;
+    $("prediction").textContent = "ANALYZING";
+    $("prediction").className = "predSide pending";
+    $("confidence").textContent = "—";
+    $("predTime").textContent = "No locked prediction";
+    $("ret30").textContent = "—"; $("ret60").textContent = "—"; $("ret90").textContent = "—";
+    $("slope").textContent = "—"; $("vol").textContent = "—"; $("score").textContent = "—";
+    $("samples").textContent = "0";
+  }
+
+  function handlePrice(price, ts) {
+    const start = Math.floor(ts / 300000) * 300000;
+    if (cycleStart !== start) {
+      resetCycle(start);
+      findActiveMarket();
+    }
+    const sec = (ts - cycleStart) / 1000;
+    if (sec < 0 || sec > 305) return;
+    samples.push({t:ts,p:price});
+    // Keep a reasonable local window; one sample per event can be frequent.
+    if (samples.length > 1200) samples = samples.slice(-900);
+
+    $("btcPrice").textContent = usd(price);
+    $("seconds").textContent = `${Math.min(300,Math.floor(sec))} / 300s`;
+    $("progress").style.width = (clamp(sec/300,0,1)*100).toFixed(1)+"%";
+    $("clock").textContent = `${String(Math.floor(sec/60)).padStart(2,"0")}:${String(Math.floor(sec%60)).padStart(2,"0")}`;
+    $("phase").textContent = sec < 90 ? "Analyzing first 90 seconds" : sec < 300 ? "Prediction locked • waiting for resolution" : "Cycle complete";
+    $("samples").textContent = String(samples.length);
+
+    const features = computeFeatures(price, sec);
+    $("ret30").textContent = pct(features.ret30);
+    $("ret60").textContent = pct(features.ret60);
+    $("ret90").textContent = pct(features.ret90);
+    $("slope").textContent = pct(features.slope);
+    $("vol").textContent = pct(features.vol);
+
+    if (sec >= 90 && decidedFor !== start) {
+      const pred = predict(features);
+      decidedFor = start;
+      $("prediction").textContent = pred.side;
+      $("prediction").className = "predSide " + pred.side.toLowerCase();
+      $("confidence").textContent = (pred.confidence*100).toFixed(1)+"%";
+      $("predTime").textContent = "Locked at +90s • " + fmtTime(ts);
+      $("score").textContent = pred.score.toFixed(3);
+
+      const rec = {
+        id: `${start}-${Math.random().toString(36).slice(2)}`,
+        cycleStart:start,
+        prediction:pred.side,
+        confidence:pred.confidence,
+        score:pred.score,
+        btcAt90:price,
+        ret30:features.ret30,
+        ret60:features.ret60,
+        ret90:features.ret90,
+        slope:features.slope,
+        volatility:features.vol,
+        marketSlug:currentSlug || `btc-updown-5m-${Math.floor(start/1000)}`,
+        lockedAt:ts,
+        result:"PENDING",
+        actual:null,
+        resolutionSource:null
+      };
+      ledger.unshift(rec);
+      ledger = ledger.slice(0,2000);
+      saveLedger();
+      notify(pred.side, pred.confidence);
+      queueVerification(rec);
+    }
+
+    // Once a cycle has passed, retry verification for any pending rows.
+    if (sec > 300) {
+      ledger.filter(x => x.result === "PENDING" && x.cycleStart < start).slice(0,10).forEach(queueVerification);
+    }
+  }
+
+  function nearest(sec) {
+    const target = cycleStart + sec*1000;
+    let best = null, dist = Infinity;
+    for (const s of samples) {
+      const d = Math.abs(s.t-target);
+      if (d < dist) { dist=d; best=s; }
+    }
+    return best && dist <= 4000 ? best.p : null;
+  }
+
+  function computeFeatures(price, sec) {
+    const p0 = nearest(0) || samples[0]?.p || price;
+    const p30 = nearest(30) || price, p60 = nearest(60) || price, p90 = nearest(90) || price;
+    const ret = p => p0 ? (p-p0)/p0 : 0;
+    const values = samples.map(x=>x.p);
+    let vol = 0;
+    if (values.length > 3) {
+      const rs=[]; for(let i=1;i<values.length;i++) rs.push((values[i]-values[i-1])/values[i-1]);
+      const mean=rs.reduce((a,b)=>a+b,0)/rs.length;
+      vol=Math.sqrt(rs.reduce((a,b)=>a+(b-mean)**2,0)/rs.length)*Math.sqrt(Math.max(1,rs.length));
+    }
+    // Least-squares slope, normalized to return per second.
+    const recent=samples.slice(-Math.min(120,samples.length));
+    let slope=0;
+    if(recent.length>4){
+      const t0=recent[0].t;
+      const xs=recent.map(x=>(x.t-t0)/1000), ys=recent.map(x=>x.p);
+      const xm=xs.reduce((a,b)=>a+b,0)/xs.length, ym=ys.reduce((a,b)=>a+b,0)/ys.length;
+      const den=xs.reduce((a,x)=>a+(x-xm)**2,0);
+      const num=xs.reduce((a,x,i)=>a+(x-xm)*(ys[i]-ym),0);
+      slope=den?num/den/price:0;
+    }
+    return {move:ret(price),ret30:ret(p30),ret60:ret(p60),ret90:ret(p90),slope,vol};
+  }
+
+  function predict(f) {
+    // Transparent heuristic. Confidence is deliberately capped; it is not a probability guarantee.
+    const momentum =
+      0.30*clamp(f.ret30/0.0015,-1,1) +
+      0.25*clamp(f.ret60/0.0025,-1,1) +
+      0.20*clamp(f.ret90/0.0035,-1,1);
+    const position=0.15*clamp(f.move/0.0025,-1,1);
+    const trend=0.20*clamp(f.slope/0.00003,-1,1);
+    const volPenalty=clamp(f.vol/0.00035,0,1);
+    let score=(momentum+position+trend)*(1-0.22*volPenalty);
+    let p=0.5+0.5*Math.tanh(score*1.6);
+    p=clamp(p,0.51,0.89);
+    const side=p>=0.5?"UP":"DOWN";
+    return {side,confidence:side==="UP"?p:1-p,score};
+  }
+
+  function notify(side, conf) {
+    if (!notificationEnabled) return;
+    try {
+      new Notification(`BTC 5M: ${side}`, {body:`90-second prediction locked • ${(conf*100).toFixed(1)}% model confidence`});
+    } catch {}
+  }
+
+  $("notifyBtn").onclick = async () => {
+    if (!("Notification" in window)) { alert("Notifications are not supported in this browser."); return; }
+    const p = await Notification.requestPermission();
+    notificationEnabled = p === "granted";
+    $("notifyBtn").textContent = notificationEnabled ? "Alerts enabled ✓" : "Enable alerts";
+    localStorage.setItem(SETTINGS, JSON.stringify({notificationEnabled}));
+  };
+  $("refreshBtn").onclick = () => { findActiveMarket(); connectFeed(); };
+  $("clearBtn").onclick = () => {
+    if (confirm("Delete the local prediction ledger? This cannot be undone.")) {
+      ledger=[]; saveLedger();
+    }
+  };
+  $("exportBtn").onclick = () => {
+    const blob = new Blob([JSON.stringify(ledger,null,2)],{type:"application/json"});
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`btc5m-predictions-${new Date().toISOString().slice(0,10)}.json`; a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  };
+
+  function renderLedger() {
+    const body=$("historyBody");
+    if (!ledger.length) {
+      body.innerHTML='<tr><td colspan="7" class="empty">No predictions yet. The first locked prediction will appear here.</td></tr>';
+    } else {
+      body.innerHTML=ledger.slice(0,200).map(r=>{
+        const predClass=r.prediction.toLowerCase();
+        const resultClass=r.result==="WIN"?"win":r.result==="LOSS"?"loss":"pending";
+        const resultText=r.result==="WIN"?"✓ CORRECT":r.result==="LOSS"?"✕ WRONG":"◷ PENDING";
+        return `<tr>
+          <td>${fmtDate(r.lockedAt)} ${fmtTime(r.lockedAt)}</td>
+          <td>${escapeHtml(r.marketSlug||"—")}</td>
+          <td><span class="pill ${predClass}">${r.prediction}</span></td>
+          <td>${(Number(r.confidence)*100).toFixed(1)}%</td>
+          <td>${usd(Number(r.btcAt90))}</td>
+          <td><span class="pill ${resultClass}">${resultText}${r.actual?` • ${r.actual}`:""}</span></td>
+          <td>${escapeHtml(r.resolutionSource||"Waiting for Polymarket resolution")}</td>
+        </tr>`;
+      }).join("");
+    }
+
+    const verified=ledger.filter(x=>x.result==="WIN"||x.result==="LOSS");
+    const correct=verified.filter(x=>x.result==="WIN");
+    const acc=verified.length?correct.length/verified.length:null;
+    const avg=verified.length?verified.reduce((a,x)=>a+Number(x.confidence||0),0)/verified.length:null;
+    let streak=0;
+    for(const x of verified){ if(x.result==="WIN") streak++; else break; }
+
+    $("statVerified").textContent=verified.length;
+    $("statCorrect").textContent=correct.length;
+    $("statAccuracy").textContent=acc==null?"—":(acc*100).toFixed(1)+"%";
+    $("statConf").textContent=avg==null?"—":(avg*100).toFixed(1)+"%";
+    $("statStreak").textContent=streak;
+    $("ledgerStatus").textContent=`${ledger.length} predictions stored locally • ${ledger.filter(x=>x.result==="PENDING").length} awaiting verification`;
+  }
+
+  function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));}
+
+  try {
+    const s=JSON.parse(localStorage.getItem(SETTINGS)||"{}");
+    notificationEnabled=Boolean(s.notificationEnabled && "Notification" in window && Notification.permission==="granted");
+    if(notificationEnabled) $("notifyBtn").textContent="Alerts enabled ✓";
+  } catch {}
+
+  renderLedger();
+  findActiveMarket();
+  connectFeed();
+
+  // Refresh market metadata regularly without disturbing the live feed.
+  setInterval(findActiveMarket, 15000);
+  // Verify pending historical records on startup, too.
+  setTimeout(()=>ledger.filter(x=>x.result==="PENDING").slice(0,20).forEach(queueVerification),2000);
+
+  // Recover gracefully if a browser suspends/resumes the tab.
+  document.addEventListener("visibilitychange",()=>{
+    if(!document.hidden){ findActiveMarket(); if(!ws || ws.readyState!==1) connectFeed(); }
+  });
+})();
