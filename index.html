@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0d12">
+<link rel="manifest" href="manifest.webmanifest">
+<title>BTC 5M Predictor</title>
+<style>
+:root{color-scheme:dark;--bg:#0b0d12;--card:#141820;--line:#252b36;--text:#f4f6f8;--muted:#98a2b3;--good:#41d17d;--bad:#ff6262;--accent:#78a7ff}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#0b0d12,#10141b);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;color:var(--text)}
+main{max-width:760px;margin:auto;padding:18px 14px 40px}.top{display:flex;justify-content:space-between;gap:12px;align-items:center}.brand{font-size:23px;font-weight:800}.pill{font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;color:var(--muted)}
+.card{background:rgba(20,24,32,.96);border:1px solid var(--line);border-radius:18px;padding:16px;margin-top:14px;box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}.big{font-size:46px;font-weight:900;margin:4px 0}.prediction{font-size:38px;font-weight:900}.up{color:var(--good)}.down{color:var(--bad)}.neutral{color:#ffd166}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metric{padding:12px;border:1px solid var(--line);border-radius:14px}.v{font-size:20px;font-weight:750;margin-top:4px}.small{font-size:12px;color:var(--muted);line-height:1.45}
+button{width:100%;padding:13px;border:0;border-radius:12px;background:#f4f6f8;color:#0b0d12;font-weight:800;font-size:15px;margin-top:10px}button.secondary{background:#242a34;color:#fff}
+.bar{height:10px;background:#242a34;border-radius:99px;overflow:hidden;margin-top:8px}.fill{height:100%;width:50%;background:var(--accent);transition:.3s}
+pre{white-space:pre-wrap;font-size:11px;color:#aab3c2}.row{display:flex;justify-content:space-between;gap:10px}.ok{color:var(--good)}.warn{color:#ffd166}
+</style>
+</head>
+<body>
+<main>
+  <div class="top"><div class="brand">₿ BTC 5M Predictor</div><div id="conn" class="pill">Connecting…</div></div>
+
+  <section class="card">
+    <div class="label">Current cycle</div>
+    <div id="cycle" class="big">—</div>
+    <div class="row"><span id="timer" class="small">Waiting for Chainlink…</span><span id="source" class="small">Polymarket RTDS</span></div>
+  </section>
+
+  <section class="card">
+    <div class="label">90-second decision</div>
+    <div id="pred" class="prediction neutral">WAITING</div>
+    <div id="conf" class="small">The model locks once the cycle reaches 90 seconds.</div>
+    <div class="bar"><div id="fill" class="fill"></div></div>
+  </section>
+
+  <section class="card grid">
+    <div class="metric"><div class="label">Oracle BTC</div><div id="price" class="v">—</div></div>
+    <div class="metric"><div class="label">Move vs open</div><div id="move" class="v">—</div></div>
+    <div class="metric"><div class="label">Trend</div><div id="trend" class="v">—</div></div>
+    <div class="metric"><div class="label">Volatility</div><div id="vol" class="v">—</div></div>
+  </section>
+
+  <section class="card">
+    <div class="label">Polymarket</div>
+    <div id="market" class="small">Finding the live BTC Up/Down market…</div>
+    <div id="odds" class="small" style="margin-top:8px">—</div>
+  </section>
+
+  <section class="card">
+    <div class="label">Safety</div>
+    <div class="small">This is a signal/paper-trading tool. It does not place orders. No private key is required. Do not treat confidence as a guarantee.</div>
+    <button id="notify">Enable 90s alerts</button>
+    <button id="reset" class="secondary">Reset current cycle</button>
+  </section>
+
+  <section class="card">
+    <div class="label">Model diagnostics</div>
+    <pre id="diag">Initializing…</pre>
+  </section>
+</main>
+<script src="app.js"></script>
+</body>
+</html>
